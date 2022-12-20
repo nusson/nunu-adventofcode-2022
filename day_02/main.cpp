@@ -1,8 +1,12 @@
 /**
  * Rock|Paper|Scisor
  * ---
- * part1: 14264
- * part2: 12382
+ *  part1: 14264
+ *  part2: 12382
+ * ---
+ *  rock   0 A X
+ *  paper  1 B Y
+ *  scisor 2 C Z
  */
 #include <iostream>
 #include <fstream>
@@ -11,9 +15,14 @@
 
 using namespace std;
 
-// string dataSource = "simple.txt";
-string dataSource = "input.txt";
-int DEBUG = 1;
+// const string dataSource = "simple.txt";
+const string dataSource = "input.txt";
+const int DEBUG = 1;
+
+/* success modifiers */
+const int LOOSE = 0;
+const int DRAW  = 3;
+const int WIN   = 6;
 
 /**
  * fetch data as pair vector
@@ -31,75 +40,74 @@ vector< pair <char, char> > fetchData(string file){
   return stack;
 }
 
-// part1 - score of one line
-int getRoundScore(int opponent, int hero){
-  int score = hero + 1;
+/** part1 - score of one match */
+int getMatchScore_part1(int opponent, int hero){
+  int score = hero + 1; // 1-3 but get 0-2 so +1
   
   // draw
-  if(opponent == hero){
-    return score + 3;
-  }
+  if(opponent == hero) return score + DRAW;
   // success (maginc see top comments)
-  if((hero - opponent + 3) % 3 == 1){
-    return score + 6;
-  }
+  if((hero - opponent + 3) % 3 == 1) return score + WIN;
   // fail
-  return score;
+  return score + LOOSE;
 }
 
-/**
- * part2 - score of one line - by logic
- *  - X lose +0 | Y draw +3 | Z win +6
- * -------------------------
- *  rock   0 A X
- *  paper  1 B Y
- *  scisor 2 C Z
-*/
-int LOOSE = 0;
-int DRAW = 1;
-int WIN = 2;
-int getRoundScoreByLogic(int opponent, int hero){
-  int score = 1; // start 1 not 0
+
+/** part2 - score of one match
+ * but hero adjust move by faith : 
+ * X lose +0 | Y draw +3 | Z win +6
+ */
+const int CONDITION_LOOSE = 0;
+const int CONDITION_DRAW  = 1;
+const int CONDITION_WIN   = 2;
+int getMatchScore_part2(int opponent, int hero){
+  int score = 1; // 1-3 but get 0-2 so +1
   
-  // draw
-  if(hero == LOOSE){
-    return 0 + score + ((opponent - 1 + 3) % 3);
+  switch (hero){
+    case CONDITION_LOOSE:
+      return LOOSE + score + ((opponent - 1 + 3) % 3);
+    case CONDITION_DRAW:
+      return DRAW + score + opponent;
+    default:
+      return WIN + score + ((opponent + 1) % 3);
   }
-  // draw
-  if(hero == DRAW){
-    return 3 + score + opponent; // + opponent;
-  }
-  // success
-  return 6 + score + ((opponent + 1) % 3);
 }
 
 /** loop and compute total score
  *  - X lose | Y draw | Z
  */
-pair<int, int> computeScores(vector< pair <char, char> > data){
+pair<int/*part1*/, int/*part2*/> computeScores(vector< pair <char/*opponent*/, char/*hero*/> > data){
   int opponent = 0;
-  int hero = 0;
-  int match_a = 0;
-  int match_b = 0;
-  int part1 = 0;
-  int part2 = 0;
+  int hero    = 0;
+
+  // use pair for part1 / part2
+  pair<int, int> match; // one round (explicit to debug)
+  pair<int, int> total; // increment
+  
   for (int i=0; i<data.size(); i++) {
     // if 'A'= any int; then 'C'-'A' = any int + 2 ¯\_(ツ)_/¯
     opponent  = data[i].first - 'A';
     hero      = data[i].second - 'X';
 
-    match_a = getRoundScore(opponent, hero);
-    match_b = getRoundScoreByLogic(opponent, hero);
-    part1 += match_a;
-    part2 += match_b;
+    // get round (match) result following each part strategy
+    match = make_pair(
+      getMatchScore_part1(opponent, hero),
+      getMatchScore_part2(opponent, hero)
+    );
+
+    // increment scores for each round (match)
+    total = make_pair(
+      total.first   + match.first,
+      total.second  + match.second
+    );
 
     if(DEBUG){
       std::cout << "..." + to_string(opponent) << "|" + to_string(hero);
-      std::cout << " = " + to_string(match_a)<< "|" + to_string(match_b) << endl;
+      std::cout << " = " + to_string(match.first)<< "|" + to_string(match.second) << endl;
     }
   }
 
-  return make_pair(part1, part2);
+  return total;
 }
 
 int main() {
